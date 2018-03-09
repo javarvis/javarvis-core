@@ -1,0 +1,51 @@
+# The general idea is to give a pattern that is used to recognize the text after speech to text was performed.
+# Each pattern is associated with one or more commands.
+# Each line must contain:
+# pattern -> command1; command2 
+
+## Patterns by example:
+# kitchen     : will detect the word "kitchen"
+# light*      : will detect one word starting with "light", 
+#               this is very interesting to match both light and lights in the current example
+# *           : match any word (but only one)
+# **          : match words
+# the?        : match "the" if given
+# a|the       : match "a" or "the"
+# ()          : group elements with parenthesis, especially to be used with ? and |
+# ^*          : match one word and make it a parameter (see command for info about parameters)
+# ^**         : match many word and make them one parameter
+#
+# NB: words must be written in lower case
+
+
+## Commands by example:
+# prv:method("param1", "param2)    : call method with "param1" and "param2" on provider named "prv" 
+# tts:say("Hello, I am Jarvis")    : Jarvis will say "Hello, I am Jarvis"
+# knx:write(^1, ^2)                : use parameters that where matched in pattern as method parameters
+# (1 == 2-1 ? true : false)        : perform some condition
+
+
+# Some "real life" examples:
+# this will match sentences like: 
+#  - turn light on in the kitchen
+#  - turn lights off in the living room
+# the associated command will use knx provider to write :
+#  - ^1 : true / false = on / off
+#  - ^2 : where to turn light on/off (kitchen, living room)
+turn light* ^* in? the? ^** -> knx:write("light", ^2, (^1 == "on" ? true : false))
+
+# Close the kitchen or living room or anything shutter
+close* the? ^** shutter -> knx:write("cover", ^1, true)
+
+
+# Lines are ordered, one a pattern of a line matches, the commands are executed and no further matching is performed. 
+# This concepts is very important, the more precise patterns must be placed first. 
+
+
+# This line is a comment and will be ignored
+
+# It is possible to split one configuration line on many lines to make it more readable, this can be done using
+# a backslash as the last character of a line
+# Example:
+this is some very long pattern followed by many commands so one line is not enough ->\
+  myProvider.myMethod("param1", "param2", "param3"); otherProvider.method("param", true)

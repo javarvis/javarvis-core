@@ -1,0 +1,140 @@
+options
+{
+  JAVA_UNICODE_ESCAPE = false;
+  UNICODE_INPUT = true;
+  STATIC = false;
+}
+
+PARSER_BEGIN(PatternParser)
+
+package com.itineric.javarvis.core.automation.patternanalysis.parser;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.itineric.javarvis.core.automation.patternanalysis.Expression;
+import com.itineric.javarvis.core.automation.patternanalysis.OptionalExpression;
+import com.itineric.javarvis.core.automation.patternanalysis.OrExpression;
+import com.itineric.javarvis.core.automation.patternanalysis.ParameterExpression;
+import com.itineric.javarvis.core.automation.patternanalysis.ParenthesisExpression;
+import com.itineric.javarvis.core.automation.patternanalysis.WordExpression;
+import com.itineric.javarvis.core.automation.pattern2command.Pattern;
+
+@SuppressWarnings("all")
+public class PatternParser
+{
+
+}
+
+PARSER_END(PatternParser)
+
+<DEFAULT> SKIP :
+{
+  " "
+| "\t"
+}
+
+<DEFAULT> TOKEN:
+{
+  < NEWLINE: (<CR>)?<LF> >
+| < QUESTION: "?" >
+| < LPAREN: "(" >
+| < RPAREN: ")" >
+| < OR: "|" >
+| < CARET: "^" >
+| < IDENTIFIER: <LETTER> (<LETTER>|<DIGIT>)* >
+| < #LETTER: ["$", "A"-"Z", "_", "a"-"z", "*"] >
+| < #DIGIT: ["0"-"9"] >
+| < #CR : "\r" >
+| < #LF : "\n" >
+}
+
+Pattern pattern() :
+{
+  List<Expression> expressions;
+}
+{
+  (
+    expressions = expressions() <EOF>
+    {
+      return new Pattern(expressions);
+    }
+  )
+}
+
+List<Expression> expressions() :
+{
+  List<Expression> expressions = new ArrayList<Expression>();
+  Expression leftExpression;
+  Expression rightExpression;
+}
+{
+  (
+    leftExpression = expression()
+    (
+      <OR> rightExpression = expression()
+      {
+        leftExpression = new OrExpression(leftExpression, rightExpression);
+      }
+    )*
+    {
+      expressions.add(leftExpression);
+    }
+  )+
+  {
+    return expressions;
+  }
+}
+
+Expression expression() :
+{
+  List<Expression> expressions;
+  Expression expression;
+  boolean isParameter = false;
+}
+{
+  (
+    <LPAREN> expressions = expressions() <RPAREN>
+    {
+      expression = new ParenthesisExpression(expressions);
+    }
+    (
+      <QUESTION>
+      {
+        expression = new OptionalExpression(expression);
+      }
+    )?
+    {
+      return expression;
+    }
+  |
+    (
+      <CARET>
+      {
+        isParameter = true;
+      }
+    )?
+    token = <IDENTIFIER>
+    {
+      final String identifier = token.image;
+      final WordExpression wordExpression = new WordExpression(identifier);
+      if (isParameter)
+      {
+        expression = new ParameterExpression(wordExpression);
+      }
+      else
+      {
+        expression = wordExpression;
+      }
+    }
+    (
+      <QUESTION>
+      {
+        expression = new OptionalExpression(expression);
+      }
+    )?
+    {
+      return expression;
+    }
+  )
+}
